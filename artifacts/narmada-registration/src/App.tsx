@@ -5,16 +5,22 @@ import {
   Check,
   CheckCircle2,
   ClipboardList,
+  ChevronRight,
+  Eye,
+  EyeOff,
   FileText,
   HeartPulse,
   Home,
+  LockKeyhole,
   MapPin,
   MessageCircle,
   Pencil,
   PersonStanding,
   Phone,
   Plus,
+  Ruler,
   Search,
+  ShieldCheck,
   Send,
   Trash2,
   UsersRound,
@@ -25,7 +31,7 @@ import {
 import './index.css';
 
 type Gender = '' | 'male' | 'female';
-type View = 'form' | 'admin';
+type View = 'form' | 'admin-login' | 'admin';
 type RecordStatus = 'new' | 'checked';
 type Companion = {
   id: number;
@@ -48,15 +54,27 @@ type FormValues = {
   allergy: string;
 };
 type Errors = Partial<Record<keyof FormValues, string>>;
+type Allocation = {
+  slotNumber: number;
+  side: 'left' | 'right';
+  distanceFeet: number;
+  distanceMeters: number;
+};
 type RegistrationRecord = {
   id: string;
   createdAt: string;
   status: RecordStatus;
   values: FormValues;
   companions: Companion[];
+  allocation: Allocation;
 };
 
 const STORAGE_KEY = 'narmada-registration-records';
+const ADMIN_EMAIL = 'Deepak53802@gmail.com';
+const ADMIN_PASSWORD = 'Aditya@123';
+const CHUNRI_LENGTH_METERS = 255;
+const CHUNRI_LENGTH_FEET = CHUNRI_LENGTH_METERS * 3.28084;
+const CHUNRI_CAPACITY = 417;
 const initialForm: FormValues = {
   name: '',
   fatherName: '',
@@ -77,10 +95,25 @@ function getStoredRecords(): RegistrationRecord[] {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored) as RegistrationRecord[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((record, index) => ({
+      ...record,
+      allocation: record.allocation ?? getAllocation(index + 1),
+    }));
   } catch {
     return [];
   }
+}
+
+function getAllocation(slotNumber: number): Allocation {
+  const distanceFeet = Math.ceil(slotNumber / 2) * 2;
+  const side = slotNumber % 2 === 1 ? 'left' : 'right';
+  return {
+    slotNumber,
+    side,
+    distanceFeet,
+    distanceMeters: Number((distanceFeet * 0.3048).toFixed(2)),
+  };
 }
 
 function makeId() {
@@ -123,18 +156,97 @@ function Field({
   );
 }
 
+function AdminLogin({
+  onSuccess,
+  onBack,
+}: {
+  onSuccess: () => void;
+  onBack: () => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
+      setError('');
+      onSuccess();
+      return;
+    }
+    setError('ईमेल या पासवर्ड सही नहीं है');
+  };
+
+  return (
+    <main className="admin-login-shell">
+      <div className="admin-login-stage">
+        <button className="login-back" type="button" onClick={onBack}>
+          <X size={15} /> Public Form
+        </button>
+        <form className="admin-login-form" onSubmit={handleLogin} noValidate>
+          <label className="login-control">
+            <UserRound size={21} />
+            <input
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setError('');
+              }}
+              placeholder="उपयोगकर्ता नाम / ईमेल"
+              aria-label="Admin email"
+              required
+            />
+          </label>
+          <label className="login-control">
+            <LockKeyhole size={21} />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+              }}
+              placeholder="पासवर्ड"
+              aria-label="Admin password"
+              required
+            />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </label>
+          {error && <p className="login-error">{error}</p>}
+          <button className="login-submit" type="submit">
+            लॉगिन करें <ChevronRight size={28} />
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
+
 function AdminPanel({
   records,
   onBack,
   onEdit,
   onDelete,
   onToggleStatus,
+  onLogout,
 }: {
   records: RegistrationRecord[];
   onBack: () => void;
   onEdit: (record: RegistrationRecord) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string) => void;
+  onLogout: () => void;
 }) {
   const [query, setQuery] = useState('');
   const filteredRecords = records.filter((record) => {
@@ -148,8 +260,8 @@ function AdminPanel({
       <div className="app-frame">
         <div className="app-toolbar">
           <p className="top-mark">|| नर्मदा हर ||</p>
-          <button className="admin-button" type="button" onClick={onBack}>
-            <X size={15} /> Public Form
+          <button className="admin-button" type="button" onClick={onLogout}>
+            <X size={15} /> Logout
           </button>
         </div>
         <section className="admin-card">
@@ -185,6 +297,10 @@ function AdminPanel({
               <div className="admin-stat">
                 <span>Pending Review</span>
                 <strong>{records.length - checkedCount}</strong>
+              </div>
+              <div className="admin-stat chunri-stat">
+                <span>255m Chunri Slots</span>
+                <strong>{Math.max(0, CHUNRI_CAPACITY - records.length)}</strong>
               </div>
             </div>
             <label className="admin-search">
@@ -231,6 +347,10 @@ function AdminPanel({
                         {record.values.gender === 'female' ? 'Female' : 'Male'} <span>•</span> Age {record.values.age}
                         <span>•</span> {record.companions.length} Companion{record.companions.length === 1 ? '' : 's'}
                       </small>
+                      <small className="record-allocation">
+                        <Ruler size={11} /> Slot #{record.allocation.slotNumber} <span>•</span>
+                        {record.allocation.side === 'left' ? 'Left end' : 'Right end'} {record.allocation.distanceFeet} ft
+                      </small>
                     </div>
                     <div className="record-date">
                       {new Date(record.createdAt).toLocaleDateString('en-IN', {
@@ -266,15 +386,75 @@ function AdminPanel({
   );
 }
 
+function ChunriAllocationCard({
+  allocation,
+  isUpdate,
+  onNewRegistration,
+  onAdmin,
+}: {
+  allocation: Allocation;
+  isUpdate: boolean;
+  onNewRegistration: () => void;
+  onAdmin: () => void;
+}) {
+  return (
+    <section className="registration-card chunri-success-card" data-testid="status-registration-success">
+      <div className="chunri-emblem">
+        <Ruler size={30} />
+      </div>
+      <p className="chunri-kicker">माँ नर्मदा की सेवा में</p>
+      <h1>255 मीटर की चुनरी</h1>
+      <p className="chunri-success-copy">
+        {isUpdate ? 'आपका पंजीयन विवरण अपडेट हो गया है।' : 'आपका पंजीयन सफलतापूर्वक हो गया है।'}
+        <br />आपके लिए चुनरी पकड़ने की जगह स्वतः निर्धारित कर दी गई है।
+      </p>
+      <div className="chunri-ribbon">
+        <span className="ribbon-end">आरंभ</span>
+        <div className="ribbon-track">
+          <span className={`allocation-marker ${allocation.side}`} />
+          <span className="ribbon-label">255 METERS</span>
+        </div>
+        <span className="ribbon-end">अंत</span>
+      </div>
+      <div className="allocation-card">
+        <span className="allocation-caption">आपका चुनरी स्थान</span>
+        <strong>स्थान #{allocation.slotNumber}</strong>
+        <p>
+          <span>{allocation.side === 'left' ? 'बाएँ सिरे' : 'दाएँ सिरे'} से</span>
+          <b>{allocation.distanceFeet} फीट</b>
+          <span>({allocation.distanceMeters} मीटर)</span>
+        </p>
+      </div>
+      <p className="spacing-note">
+        <ShieldCheck size={15} /> दोनों सिरों से हर 2 फीट पर एक व्यक्ति का क्रम
+      </p>
+      <div className="thank-actions">
+        <button className="back-button" type="button" onClick={onNewRegistration}>
+          नया पंजीयन करें
+        </button>
+        <button className="outline-button" type="button" onClick={onAdmin}>
+          <ClipboardList size={16} /> Admin Panel
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [values, setValues] = useState<FormValues>(initialForm);
   const [errors, setErrors] = useState<Errors>({});
   const [sameWhatsapp, setSameWhatsapp] = useState(false);
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const [view, setView] = useState<View>('form');
+  const [view, setView] = useState<View>(() => (
+    new URLSearchParams(window.location.search).get('admin') === '1'
+      ? 'admin-login'
+      : 'form'
+  ));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [records, setRecords] = useState<RegistrationRecord[]>(getStoredRecords);
+  const [lastAllocation, setLastAllocation] = useState<Allocation | null>(null);
+  const [capacityError, setCapacityError] = useState('');
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
@@ -313,6 +493,8 @@ function App() {
     if (!validate()) return;
 
     if (editingId) {
+      const existingRecord = records.find((record) => record.id === editingId);
+      if (existingRecord) setLastAllocation(existingRecord.allocation);
       setRecords((current) =>
         current.map((record) =>
           record.id === editingId
@@ -321,6 +503,17 @@ function App() {
         ),
       );
     } else {
+      const nextSlot = records.reduce(
+        (max, record) => Math.max(max, record.allocation.slotNumber),
+        0,
+      ) + 1;
+      if (nextSlot > CHUNRI_CAPACITY) {
+        setCapacityError('255 मीटर की चुनरी के सभी स्थान भर चुके हैं।');
+        return;
+      }
+      const allocation = getAllocation(nextSlot);
+      setLastAllocation(allocation);
+      setCapacityError('');
       setRecords((current) => [
         {
           id: makeId(),
@@ -328,6 +521,7 @@ function App() {
           status: 'new',
           values,
           companions,
+          allocation,
         },
         ...current,
       ]);
@@ -360,6 +554,8 @@ function App() {
     setSubmitted(false);
     setSameWhatsapp(false);
     setEditingId(null);
+    setLastAllocation(null);
+    setCapacityError('');
   };
 
   const editRecord = (record: RegistrationRecord) => {
@@ -368,6 +564,8 @@ function App() {
     setErrors({});
     setSameWhatsapp(record.values.mobile === record.values.whatsapp);
     setEditingId(record.id);
+    setLastAllocation(record.allocation);
+    setCapacityError('');
     setSubmitted(false);
     setView('form');
   };
@@ -388,6 +586,15 @@ function App() {
     );
   };
 
+  if (view === 'admin-login') {
+    return (
+      <AdminLogin
+        onSuccess={() => setView('admin')}
+        onBack={() => setView('form')}
+      />
+    );
+  }
+
   if (view === 'admin') {
     return (
       <AdminPanel
@@ -399,6 +606,10 @@ function App() {
         onEdit={editRecord}
         onDelete={deleteRecord}
         onToggleStatus={toggleRecordStatus}
+        onLogout={() => {
+          resetForm();
+          setView('form');
+        }}
       />
     );
   }
@@ -409,31 +620,21 @@ function App() {
         <div className="app-frame">
           <div className="app-toolbar">
             <p className="top-mark">|| नर्मदा हर ||</p>
-            <button className="admin-button" type="button" onClick={() => setView('admin')}>
+            <button className="admin-button" type="button" onClick={() => setView('admin-login')}>
               <ClipboardList size={15} /> Admin Panel
             </button>
           </div>
-          <section className="registration-card thank-you" data-testid="status-registration-success">
-            <div className="success-seal">
-              <Check size={42} strokeWidth={2.7} />
-            </div>
-            <h1>{editingId ? 'विवरण अपडेट हो गया!' : 'धन्यवाद!'}</h1>
-            <p>
-              {editingId
-                ? 'पंजीयन विवरण सफलतापूर्वक अपडेट हो गया है।'
-                : 'आपका पंजीयन सफलतापूर्वक हो गया है।'}
-              <br />माँ नर्मदा का आशीर्वाद सदैव आपके साथ रहे।
-            </p>
-            <p className="english-thanks">Thank you for registering with Shri Maa Narmada Bhakt Pariwar.</p>
-            <div className="thank-actions">
-              <button className="back-button" type="button" onClick={resetForm} data-testid="button-new-registration">
-                नया पंजीयन करें
-              </button>
-              <button className="outline-button" type="button" onClick={() => { setSubmitted(false); setView('admin'); }}>
-                <ClipboardList size={16} /> Admin Panel
-              </button>
-            </div>
-          </section>
+          {lastAllocation && (
+            <ChunriAllocationCard
+              allocation={lastAllocation}
+              isUpdate={Boolean(editingId)}
+              onNewRegistration={resetForm}
+              onAdmin={() => {
+                setSubmitted(false);
+                setView('admin-login');
+              }}
+            />
+          )}
         </div>
       </main>
     );
@@ -444,7 +645,7 @@ function App() {
       <div className="app-frame">
         <div className="app-toolbar">
           <p className="top-mark">|| नर्मदा हर ||</p>
-          <button className="admin-button" type="button" onClick={() => setView('admin')}>
+          <button className="admin-button" type="button" onClick={() => setView('admin-login')}>
             <ClipboardList size={15} /> Admin Panel
           </button>
         </div>
@@ -552,6 +753,7 @@ function App() {
               ))}
               <button className="add-companion" type="button" onClick={addCompanion} data-testid="button-add-companion"><Plus size={15} /> Add Another Companion</button>
             </section>
+            {capacityError && <p className="capacity-error"><Ruler size={14} /> {capacityError}</p>}
             <button className="submit-button" type="submit" data-testid="button-submit-registration">
               {editingId ? <Pencil size={17} /> : <Send size={17} />} {editingId ? 'Update Registration' : 'Submit Registration'}
             </button>

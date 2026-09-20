@@ -83,6 +83,110 @@ button { cursor: pointer; }
   border-radius: 50%;
   box-shadow: 0 0 0 28px rgba(245,196,49,.025), 0 0 0 56px rgba(245,196,49,.02);
 }
+.admin-login-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: #061f19;
+}
+.admin-login-stage {
+  width: min(100vw, 768px);
+  aspect-ratio: 3 / 4;
+  position: relative;
+  overflow: hidden;
+  background: url('/admin-login-reference.png') center / cover no-repeat;
+}
+.login-back {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255,255,255,.62);
+  border-radius: 99px;
+  color: #163c34;
+  background: rgba(255,255,255,.76);
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 3px 12px rgba(0,0,0,.18);
+}
+.admin-login-form {
+  position: absolute;
+  top: 47.1%;
+  right: 6.5%;
+  width: 48.5%;
+  display: grid;
+  gap: 13px;
+}
+.login-control {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 15px;
+  border: 1px solid rgba(216, 224, 228, .75);
+  border-radius: 99px;
+  color: #0f64c2;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 5px 12px rgba(73, 64, 49, .18);
+}
+.login-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #1d374e;
+  background: transparent;
+  font-size: 14px;
+}
+.login-control input::placeholder { color: #7a8896; }
+.password-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  color: #6a7883;
+  background: transparent;
+}
+.login-error {
+  margin: -5px 8px 0;
+  color: #a61717;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.login-submit {
+  min-height: 57px;
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid #79beff;
+  border-radius: 99px;
+  color: white;
+  background: linear-gradient(180deg, #2587e5, #0756bc);
+  box-shadow: 0 5px 10px rgba(38, 105, 186, .32);
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+}
+.login-submit svg {
+  width: 35px;
+  height: 35px;
+  padding: 5px;
+  border-radius: 50%;
+  color: #1568c7;
+  background: #fff;
+}
+.login-submit:hover { filter: brightness(1.07); transform: translateY(-1px); }
 .app-frame {
   width: min(100%, 900px);
   margin: 0 auto;
@@ -411,6 +515,16 @@ button { cursor: pointer; }
 }
 .submit-button:hover { transform: translateY(-1px); box-shadow: 0 5px 0 #9c6400, 0 11px 25px rgba(244,168,0,.25); }
 .submit-button:active { transform: translateY(2px); box-shadow: 0 2px 0 #9c6400; }
+.capacity-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px 0 -3px;
+  color: #ffb0a5;
+  font-size: 11px;
+  text-align: center;
+}
 .form-footnote {
   text-align: center;
   margin: 11px 0 0;
@@ -492,6 +606,149 @@ button { cursor: pointer; }
 .thank-actions .back-button,
 .thank-actions .outline-button { margin-top: 28px; }
 
+.chunri-success-card {
+  min-height: 650px;
+  padding: 34px 26px 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(229, 192, 55, .16), transparent 15rem),
+    linear-gradient(145deg, rgba(7,59,42,.97), rgba(3,35,28,.98));
+}
+.chunri-emblem {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #efd56b;
+  border-radius: 50%;
+  color: #12382c;
+  background: linear-gradient(145deg, #ffe27a, #c99122);
+  box-shadow: 0 0 0 9px rgba(245,196,49,.08), 0 10px 32px rgba(0,0,0,.28);
+  animation: pop .55s .1s ease both;
+}
+.chunri-kicker {
+  margin: 17px 0 2px;
+  color: #bfe7c9;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 12px;
+}
+.chunri-success-card h1 {
+  margin: 0;
+  color: #ffe27b;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: clamp(27px, 5vw, 42px);
+}
+.chunri-success-copy {
+  max-width: 520px;
+  margin: 10px 0 0;
+  color: #dce7d4;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.chunri-ribbon {
+  width: min(100%, 650px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin: 31px 0 17px;
+}
+.ribbon-end {
+  color: #ffe27b;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 11px;
+}
+.ribbon-track {
+  height: 23px;
+  position: relative;
+  border: 1px solid #ead26d;
+  border-radius: 99px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 16px, transparent 16px 32px),
+    linear-gradient(90deg, #e94b68, #ffcf4a 27%, #dd4d7d 52%, #ffe070 76%, #dc4561);
+  box-shadow: 0 5px 17px rgba(237, 98, 104, .24);
+}
+.ribbon-track::before, .ribbon-track::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff8d4;
+  box-shadow: 0 0 0 3px rgba(103, 37, 29, .18);
+}
+.ribbon-track::before { left: 5px; }
+.ribbon-track::after { right: 5px; }
+.ribbon-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(84, 23, 34, .8);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+.allocation-marker {
+  position: absolute;
+  z-index: 1;
+  top: -8px;
+  width: 5px;
+  height: 38px;
+  border: 1px solid #fff4b3;
+  border-radius: 5px;
+  background: #0b5e43;
+  box-shadow: 0 0 0 3px rgba(11, 94, 67, .3), 0 2px 8px rgba(0,0,0,.3);
+}
+.allocation-marker.left { left: 17%; }
+.allocation-marker.right { right: 17%; }
+.allocation-card {
+  width: min(100%, 340px);
+  padding: 16px 22px 13px;
+  border: 1px solid rgba(245,196,49,.68);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(33, 87, 62, .85), rgba(7, 46, 35, .9));
+  box-shadow: inset 0 1px rgba(255,255,255,.05);
+}
+.allocation-caption {
+  display: block;
+  color: #c4e0c4;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 11px;
+}
+.allocation-card strong {
+  display: block;
+  margin: 3px 0 3px;
+  color: #ffe27b;
+  font-size: 28px;
+}
+.allocation-card p {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: #dbe9d7;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 12px;
+}
+.allocation-card p b { color: #ffdb63; }
+.spacing-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 13px 0 0;
+  color: #a9c9af;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 10px;
+}
+.spacing-note svg { color: #f5c431; }
+
 .admin-card {
   overflow: hidden;
   border: 1px solid rgba(225, 198, 78, .7);
@@ -568,7 +825,7 @@ button { cursor: pointer; }
 }
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 9px;
   margin: 18px 0 12px;
 }
@@ -747,6 +1004,15 @@ button { cursor: pointer; }
   .app-toolbar { min-height: 25px; }
   .top-mark { margin-bottom: 6px; font-size: 10px; }
   .admin-button { top: -3px; padding: 0 7px; font-size: 9px; }
+  .admin-login-stage { width: 100vw; }
+  .login-back { top: 9px; right: 9px; min-height: 24px; font-size: 9px; }
+  .admin-login-form { top: 47.2%; right: 6%; width: 48.8%; gap: 8px; }
+  .login-control { min-height: 35px; gap: 7px; padding: 0 10px; }
+  .login-control svg { width: 15px; height: 15px; }
+  .login-control input { font-size: 9px; }
+  .login-submit { min-height: 39px; margin-top: 17px; gap: 7px; font-size: 13px; }
+  .login-submit svg { width: 25px; height: 25px; padding: 3px; }
+  .login-error { margin-top: -1px; font-size: 8px; }
   .registration-card { border-radius: 10px; }
   .hero-banner { min-height: 147px; padding: 18px 11px 16px; }
   .form-wrap { padding: 10px 8px 13px; }
@@ -776,6 +1042,14 @@ button { cursor: pointer; }
   .admin-stat { padding: 8px 7px; }
   .admin-stat span { font-size: 8px; }
   .admin-stat strong { font-size: 19px; }
+  .chunri-success-card { min-height: 600px; padding: 26px 13px 31px; }
+  .chunri-success-card h1 { font-size: 28px; }
+  .chunri-success-copy { font-size: 11px; }
+  .chunri-ribbon { gap: 5px; margin-top: 25px; }
+  .ribbon-end { font-size: 9px; }
+  .allocation-card strong { font-size: 25px; }
+  .allocation-card p { font-size: 10px; }
+  .spacing-note { font-size: 9px; }
   .admin-search { height: 34px; }
   .admin-search input { font-size: 10px; }
   .admin-record { grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 8px; }
@@ -800,4 +1074,9 @@ button { cursor: pointer; }
   .admin-stat { padding: 7px 5px; }
   .admin-stat span { font-size: 7px; }
   .admin-stat strong { font-size: 17px; }
+  .admin-stats { grid-template-columns: repeat(2, 1fr); }
+  .admin-login-form { top: 47.4%; right: 6%; width: 49%; }
+  .login-control { min-height: 31px; }
+  .login-submit { min-height: 35px; margin-top: 14px; font-size: 11px; }
+  .login-submit svg { width: 22px; height: 22px; }
 }
