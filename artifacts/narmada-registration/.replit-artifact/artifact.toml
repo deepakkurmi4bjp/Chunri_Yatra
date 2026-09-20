@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Shri Maa Narmada Registration"
+description = "A faithful, mobile-first registration experience for the Shri Maa Narmada Bhakt Pariwar pilgrimage, with participant details, companion management, validation, and a confirmation screen."
+version = "1.0.0"
+id = "artifacts/narmada-registration"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19110
+
+[services.development]
+run = "pnpm --filter @workspace/narmada-registration run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/narmada-registration", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/narmada-registration/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19110"
+BASE_PATH = "/"
