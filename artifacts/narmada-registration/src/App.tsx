@@ -266,10 +266,14 @@ function AdminPanel({
         </div>
         <section className="admin-card">
           <header className="admin-hero">
-            <div>
+            <div className="admin-hero-brand">
               <p className="sacred-line">|| नर्मदे हर ||</p>
-              <h1>श्री माँ नर्मदा</h1>
-              <p>यात्रा पंजीयन — Admin Panel</p>
+              <img
+                className="admin-panel-logo"
+                src="/registration-logo.png"
+                alt="श्री माँ नर्मदा भक्त परिवार"
+              />
+              <p className="admin-hero-subtitle">यात्रा पंजीयन — Admin Panel</p>
             </div>
             <ClipboardList size={43} strokeWidth={1.4} />
           </header>

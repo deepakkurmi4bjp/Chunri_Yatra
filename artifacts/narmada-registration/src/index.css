@@ -1385,3 +1385,225 @@ button { cursor: pointer; }
     box-shadow: 0 12px 45px rgba(0, 0, 0, .38);
   }
 }
+
+/* Admin panel shares the registration form's maroon-and-gold identity. */
+.admin-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(153, 34, 43, .3), transparent 30rem),
+    linear-gradient(180deg, #3b0912 0%, #5e101b 48%, #26050d 100%);
+}
+.admin-shell::before {
+  opacity: .18;
+  background:
+    linear-gradient(121deg, transparent 22%, rgba(255, 214, 108, .18) 22.15%, transparent 22.45%),
+    linear-gradient(57deg, transparent 77%, rgba(255, 201, 84, .12) 77.25%, transparent 77.5%);
+}
+.admin-shell::after {
+  border-color: rgba(244, 199, 85, .12);
+}
+.admin-card {
+  overflow: hidden;
+  border: 2px solid #d7a93c;
+  border-radius: 18px;
+  background: #fff8e9;
+  box-shadow: 0 22px 70px rgba(29, 2, 7, .42), 0 0 0 5px rgba(215,169,60,.12);
+}
+.admin-hero {
+  min-height: 215px;
+  padding: 18px 28px 16px;
+  border-bottom: 3px solid #d9ae43;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 224, 116, .16), transparent 16rem),
+    linear-gradient(135deg, #5d101a 0%, #8f1820 48%, #4e0c16 100%);
+}
+.admin-hero-brand {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.admin-hero .sacred-line {
+  color: #ffe8a4;
+  margin: 0;
+}
+.admin-panel-logo {
+  width: min(100%, 560px);
+  max-height: 126px;
+  display: block;
+  object-fit: contain;
+  padding: 6px 16px;
+  border: 1px solid rgba(245, 203, 104, .8);
+  border-radius: 9px;
+  background: #fffdf8;
+  box-shadow: 0 7px 20px rgba(29, 2, 7, .26), inset 0 0 0 3px rgba(215,169,60,.1);
+}
+.admin-hero-subtitle {
+  margin: 0;
+  color: #ffe8a4;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 12px;
+}
+.admin-hero > svg {
+  color: #ffe39a;
+}
+.admin-body {
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.4), transparent 35%),
+    #fff8e9;
+}
+.admin-heading-row h2 {
+  color: #781923;
+}
+.admin-heading-row h2 svg {
+  color: #b47b18;
+}
+.admin-heading-row p {
+  color: #795f58;
+}
+.public-form-button {
+  border-color: #e4ba55;
+  color: #fff5d7;
+  background: linear-gradient(180deg, #b52a35, #76121d);
+  box-shadow: 0 3px 0 #4d0d16;
+}
+.admin-stats {
+  margin-top: 18px;
+}
+.admin-stat {
+  border-color: rgba(180, 123, 24, .42);
+  background: linear-gradient(135deg, #fffdf8, #f9edd8);
+  box-shadow: inset 0 1px #fff, 0 4px 12px rgba(87, 31, 21, .06);
+}
+.admin-stat span {
+  color: #987a70;
+}
+.admin-stat strong {
+  color: #8f1722;
+}
+.admin-search {
+  border-color: rgba(169, 111, 31, .5);
+  color: #a87524;
+  background: #fffdf8;
+  box-shadow: inset 0 1px 2px rgba(91, 25, 27, .05);
+}
+.admin-search input {
+  color: #541d22;
+}
+.admin-search input::placeholder {
+  color: #aa9189;
+}
+.admin-record {
+  border-color: rgba(169, 111, 31, .55);
+  border-radius: 9px;
+  background: linear-gradient(135deg, #8d1823, #5d0c17);
+  box-shadow: 0 5px 14px rgba(87, 31, 21, .1), inset 0 0 0 1px rgba(255, 222, 126, .06);
+}
+.admin-record:hover {
+  border-color: #e2b950;
+  background: linear-gradient(135deg, #a21e29, #6d0c17);
+}
+.record-number {
+  border-color: rgba(255, 225, 135, .7);
+  color: #ffe39a;
+}
+.record-main h3 {
+  color: #fff0d0;
+}
+.record-main p,
+.record-main small {
+  color: #f4d7c8;
+}
+.record-main small {
+  color: #e7bfae;
+}
+.record-main p span,
+.record-main small span {
+  color: #ffe08a;
+}
+.status-badge.new {
+  color: #7a111b;
+  background: #ffe19a;
+}
+.status-badge.checked {
+  color: #fff3d1;
+  background: #a32331;
+}
+.status-dot {
+  background: #9a1724;
+}
+.record-date {
+  color: #f0cdb9;
+}
+.record-action {
+  border-color: rgba(255, 222, 158, .45);
+  color: #ffe8c6;
+  background: rgba(74, 8, 17, .62);
+}
+.record-action:hover {
+  border-color: #ffe19a;
+  color: #fff0a0;
+}
+.record-action.check-action.active {
+  border-color: #ffe19a;
+  color: #fff0a0;
+  background: rgba(163, 35, 49, .8);
+}
+.record-action.delete-action:hover {
+  border-color: #ffb19a;
+  color: #ffd0c0;
+}
+.admin-empty {
+  border-color: rgba(169, 111, 31, .55);
+  color: #987a70;
+  background: #fffdf8;
+}
+.admin-empty > svg {
+  color: #b47b18;
+}
+.admin-empty h3 {
+  color: #781923;
+}
+
+@media (max-width: 560px) {
+  .admin-card {
+    border-radius: 11px;
+  }
+  .admin-hero {
+    min-height: 180px;
+    padding: 14px 12px 13px;
+    gap: 8px;
+  }
+  .admin-hero-brand {
+    gap: 5px;
+  }
+  .admin-panel-logo {
+    max-height: 92px;
+    padding: 4px 9px;
+  }
+  .admin-hero-subtitle {
+    font-size: 10px;
+  }
+  .admin-hero > svg {
+    width: 29px;
+    height: 29px;
+  }
+  .admin-body {
+    padding: 12px 9px 15px;
+  }
+  .admin-heading-row h2 {
+    font-size: 16px;
+  }
+  .admin-heading-row p {
+    margin-left: 26px;
+    font-size: 9px;
+  }
+  .admin-stat strong {
+    font-size: 19px;
+  }
+  .admin-record {
+    border-radius: 8px;
+  }
+}
