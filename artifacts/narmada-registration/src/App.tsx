@@ -417,8 +417,13 @@ function ChunriAllocationCard({
         <span className="ribbon-end">अंत</span>
       </div>
       <div className="allocation-card">
+        <div className="allocation-ticket-meta">
+          <span>255M • NARMADA SEVA</span>
+          <span>PREMIUM PASS</span>
+        </div>
         <span className="allocation-caption">आपका चुनरी स्थान</span>
         <strong>स्थान #{allocation.slotNumber}</strong>
+        <div className="ticket-divider" />
         <p>
           <span>{allocation.side === 'left' ? 'बाएँ सिरे' : 'दाएँ सिरे'} से</span>
           <b>{allocation.distanceFeet} फीट</b>
@@ -659,13 +664,13 @@ function App() {
         )}
         <section className="registration-card">
           <header className="hero-banner">
-            <div className="hero-copy">
-              <div className="sacred-line">|| नर्मदे हर ||</div>
-              <h1 className="hero-title">श्री माँ नर्मदा</h1>
-              <h2 className="hero-subtitle">भक्त परिवार</h2>
-              <div className="hero-rule" />
-              <div className="hero-note">सेवा • श्रद्धा • संस्कृति • संगठित समाज</div>
-            </div>
+            <div className="hero-ornament">✦ सेवा • श्रद्धा • एकता ✦</div>
+            <img
+              className="registration-logo"
+              src="/registration-logo.png"
+              alt="श्री माँ नर्मदा भक्त परिवार"
+            />
+            <div className="hero-note">जन्मोत्सव चुनरी यात्रा • यात्री पंजीयन</div>
           </header>
           <form className="form-wrap" onSubmit={handleSubmit} noValidate>
             <h2 className="section-heading">

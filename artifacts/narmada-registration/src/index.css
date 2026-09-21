@@ -1080,3 +1080,308 @@ button { cursor: pointer; }
   .login-submit { min-height: 35px; margin-top: 14px; font-size: 11px; }
   .login-submit svg { width: 22px; height: 22px; }
 }
+
+/* Premium registration and seva-pass treatment */
+.registration-card {
+  border: 2px solid #d7a93c;
+  border-radius: 18px;
+  background: #fff8e9;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .4), 0 0 0 5px rgba(215,169,60,.12);
+}
+.hero-banner {
+  min-height: 225px;
+  padding: 18px 22px 16px;
+  flex-direction: column;
+  gap: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 229, 126, .2), transparent 14rem),
+    linear-gradient(135deg, #5d101a 0%, #8f1820 48%, #4e0c16 100%);
+  border-bottom: 3px solid #d9ae43;
+}
+.hero-banner::after {
+  opacity: .2;
+  background:
+    linear-gradient(135deg, transparent 49.5%, rgba(255,220,112,.22) 50%, transparent 50.5%),
+    radial-gradient(ellipse at center, transparent 20%, rgba(24, 3, 8, .5) 100%);
+}
+.hero-ornament {
+  color: #ffe08a;
+  font-family: 'Noto Sans Devanagari', sans-serif;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-shadow: 0 1px 12px rgba(255, 222, 115, .35);
+}
+.registration-logo {
+  width: min(100%, 650px);
+  max-height: 148px;
+  object-fit: contain;
+  display: block;
+  padding: 8px 18px;
+  border: 1px solid rgba(245, 203, 104, .8);
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: 0 8px 26px rgba(28, 4, 8, .28), inset 0 0 0 4px rgba(215,169,60,.1);
+}
+.hero-banner .hero-note {
+  color: #ffe8a4;
+  font-size: 11px;
+}
+.form-wrap {
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.4), transparent 35%),
+    #fff8e9;
+}
+.section-heading {
+  color: #781923;
+  font-size: 20px;
+}
+.section-heading svg { color: #b47b18; }
+.section-subtitle {
+  color: #795f58;
+  font-size: 11px;
+}
+.fields-panel {
+  border: 1px solid rgba(180, 123, 24, .42);
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #fffdf8, #f9edd8);
+  box-shadow: 0 8px 24px rgba(87, 31, 21, .08), inset 0 1px #fff;
+}
+.field-label {
+  color: #5d1d22;
+}
+.field-label span { color: #987a70; }
+.control, .select-control {
+  height: 43px;
+  color: #541d22;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(169, 111, 31, .5);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px rgba(91, 25, 27, .06);
+}
+.control::placeholder { color: #aa9189; }
+.control:focus, .select-control:focus {
+  border-color: #a91e29;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(169, 30, 41, .1);
+}
+.control-wrap > svg { color: #a87524; }
+.field-error { color: #a91e29; }
+.gender-option {
+  height: 43px;
+  color: #6d3b38;
+  background: #fffdf7;
+  border-color: rgba(169, 111, 31, .5);
+}
+.gender-option:hover { border-color: #b47b18; }
+.gender-option.selected.male,
+.gender-option.selected.female {
+  color: #fff5d9;
+  background: linear-gradient(135deg, #8c1722, #bd3440);
+  border-color: #e1b64e;
+}
+.whatsapp-same {
+  color: #7a514a;
+  background: #f9ecd7;
+  border-color: rgba(169, 111, 31, .55);
+}
+.whatsapp-same.checked {
+  color: #fff3d1;
+  background: #8d1822;
+  border-color: #dfb54b;
+}
+.companion-panel {
+  border: 1px solid rgba(169, 111, 31, .5);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #751621, #4d0e17);
+  box-shadow: 0 8px 22px rgba(87, 31, 21, .12);
+}
+.companion-heading { color: #ffe8a4; }
+.companion-heading svg { color: #e2b54f; }
+.companion-subtitle { color: #e6c9b4; }
+.companion-row .field-label { color: #ffe8d4; }
+.companion-row .control,
+.companion-row .select-control {
+  color: #5d1d22;
+  background: #fffaf0;
+}
+.add-companion {
+  border-color: #e1b64e;
+  color: #fff4d6;
+  background: linear-gradient(180deg, #b12a35, #71131c);
+}
+.remove-companion {
+  border-color: rgba(255, 196, 117, .7);
+  color: #ffd0b0;
+  background: rgba(74, 9, 18, .58);
+}
+.submit-button {
+  height: 49px;
+  border: 1px solid #f7d46c;
+  border-radius: 9px;
+  color: #fff5d7;
+  background: linear-gradient(180deg, #b52a35, #76121d);
+  box-shadow: 0 4px 0 #4d0d16, 0 10px 25px rgba(126, 20, 31, .22);
+}
+.submit-button:hover {
+  box-shadow: 0 5px 0 #4d0d16, 0 13px 28px rgba(126, 20, 31, .3);
+}
+.form-footnote { color: #8b6d5c; }
+.form-footnote strong { color: #8f1722; }
+
+/* Keep the login artwork clean while retaining real, working controls. */
+.admin-login-stage {
+  background-image: url('/admin-login-reference.png');
+}
+.admin-login-stage::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 58.8%;
+  right: 3.5%;
+  width: 56%;
+  height: 24.2%;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  background: #fffaf2;
+  box-shadow: 0 3px 10px rgba(113, 75, 39, .1);
+}
+.admin-login-form { z-index: 3; }
+.login-submit { position: relative; z-index: 4; }
+
+/* Red-and-gold premium slot sheet */
+.chunri-success-card {
+  position: relative;
+  isolation: isolate;
+  border: 3px solid #e3b646;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 211, 93, .13), transparent 13rem),
+    linear-gradient(145deg, #9a1d27, #680b17 70%, #4b0812);
+  box-shadow: 0 22px 65px rgba(30, 3, 7, .4), inset 0 0 0 6px rgba(255, 218, 111, .08);
+}
+.chunri-success-card::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 13px;
+  border: 1px solid rgba(246, 209, 102, .66);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.chunri-emblem {
+  color: #74111d;
+  background: linear-gradient(145deg, #fff0a0, #d99c2e);
+  border-color: #fff0a0;
+  box-shadow: 0 0 0 9px rgba(255, 211, 93, .1), 0 10px 32px rgba(31, 3, 6, .35);
+}
+.chunri-kicker { color: #ffe8a4; }
+.chunri-success-card h1 { color: #fff0a0; text-shadow: 0 2px 14px rgba(42, 2, 8, .4); }
+.chunri-success-copy { color: #f8daca; }
+.chunri-ribbon { margin-top: 28px; }
+.ribbon-end { color: #ffe8a4; }
+.ribbon-track {
+  height: 28px;
+  border: 2px solid #e8bd50;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 239, 170, .15) 0 18px, transparent 18px 36px),
+    linear-gradient(90deg, #720d19, #bd2733 50%, #720d19);
+  box-shadow: 0 5px 18px rgba(39, 2, 7, .28);
+}
+.ribbon-track::before, .ribbon-track::after {
+  top: 7px;
+  background: #ffe7a0;
+  box-shadow: 0 0 0 3px rgba(80, 7, 17, .25);
+}
+.ribbon-label { color: rgba(255, 232, 164, .85); }
+.allocation-marker {
+  top: -7px;
+  height: 39px;
+  border-color: #fff0a0;
+  background: #fff0a0;
+  box-shadow: 0 0 0 3px rgba(255, 230, 140, .22), 0 2px 8px rgba(0,0,0,.3);
+}
+.allocation-card {
+  width: min(100%, 390px);
+  position: relative;
+  padding: 17px 24px 16px;
+  border: 2px solid #e3b646;
+  border-radius: 5px;
+  background: linear-gradient(145deg, #a21e29, #6d0c17);
+  box-shadow: 0 10px 24px rgba(39, 2, 7, .3), inset 0 0 0 4px rgba(255, 233, 152, .08);
+}
+.allocation-card::before,
+.allocation-card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #e3b646;
+  border-radius: 50%;
+  background: #7c111c;
+  transform: translateY(-50%);
+}
+.allocation-card::before { left: -11px; }
+.allocation-card::after { right: -11px; }
+.allocation-ticket-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed rgba(255, 226, 138, .6);
+  color: #f9d77b;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.allocation-caption { color: #ffe7c0; margin-top: 11px; }
+.allocation-card strong { color: #fff0a0; font-size: 32px; }
+.ticket-divider {
+  width: 82%;
+  margin: 8px auto;
+  border-top: 1px dashed rgba(255, 226, 138, .58);
+}
+.allocation-card p { color: #f9daca; }
+.allocation-card p b { color: #ffe38a; }
+.spacing-note { color: #f5cdbd; }
+.spacing-note svg { color: #ffe18a; }
+.chunri-success-card .back-button {
+  color: #7b111c;
+  background: #ffe49a;
+  border-color: #ffe49a;
+  font-weight: 800;
+}
+.chunri-success-card .outline-button {
+  color: #ffe49a;
+  background: rgba(255, 219, 114, .08);
+  border-color: rgba(255, 219, 114, .72);
+}
+
+@media (max-width: 560px) {
+  .admin-login-shell {
+    position: relative;
+    overflow: hidden;
+    background: #061f19;
+  }
+  .admin-login-shell::before {
+    content: '';
+    position: absolute;
+    inset: -32px;
+    background: url('/admin-login-reference.png') center / cover no-repeat;
+    filter: blur(18px) brightness(.58);
+    transform: scale(1.08);
+  }
+  .admin-login-stage {
+    width: 100vw;
+    height: auto;
+    aspect-ratio: 3 / 4;
+    z-index: 1;
+    background-size: cover;
+    box-shadow: 0 12px 45px rgba(0, 0, 0, .38);
+  }
+}
