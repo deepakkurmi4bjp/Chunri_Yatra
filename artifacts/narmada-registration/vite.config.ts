@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.PORT || '5173';
+const rawPort = process.env.VITE_PORT || '3000';
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
@@ -145,9 +145,54 @@ function registerApiMiddlewares(server: any) {
 
             for (const item of incoming) {
               if (item && item.id && !idMap.has(item.id)) {
-                if (!item.allocation || !item.allocation.slotNumber) {
-                  const maxSlot = current.reduce((max: number, r: any) => Math.max(max, r.allocation?.slotNumber || 0), 0);
-                  item.allocation = calculateAllocation(maxSlot + 1);
+                if (!item.allocation || (!item.allocation.slotNumber && !item.allocation.isPendingApproval && item.volunteerStatus !== 'pending')) {
+                  const age = parseInt(item.values?.age || '30', 10);
+                  const gender = item.values?.gender || '';
+                  let zoneStart = 1;
+                  let zoneEnd = 100;
+                  let zoneName = 'जोन १: महिलाएं/कन्याएं';
+                  let zoneCat = 'महिलाएं एवं कन्याएं (Females/Girls)';
+
+                  if (gender === 'female') {
+                    zoneStart = 1;
+                    zoneEnd = 100;
+                    zoneName = 'जोन १: महिलाएं/कन्याएं';
+                    zoneCat = 'महिलाएं एवं कन्याएं (Females/Girls)';
+                  } else if (gender === 'male' && !isNaN(age) && age > 35) {
+                    zoneStart = 201;
+                    zoneEnd = 316;
+                    zoneName = 'जोन ३: 35+ वर्ष के पुरुष';
+                    zoneCat = '35 वर्ष से अधिक उम्र के पुरुष (Men > 35 yrs)';
+                  } else {
+                    zoneStart = 317;
+                    zoneEnd = 417;
+                    zoneName = 'जोन ४: युवा लड़के/पुरुष (<=35)';
+                    zoneCat = '35 वर्ष से कम के लड़के/युवा पुरुष (Men <= 35 yrs)';
+                  }
+
+                  const occupied = new Set(
+                    current
+                      .filter((r: any) => r.allocation?.slotNumber && !r.allocation?.isPendingApproval)
+                      .map((r: any) => r.allocation.slotNumber)
+                  );
+                  let assignedSlot = zoneStart;
+                  for (let s = zoneStart; s <= zoneEnd; s++) {
+                    if (!occupied.has(s)) {
+                      assignedSlot = s;
+                      break;
+                    }
+                  }
+
+                  const distanceFeet = Math.ceil(assignedSlot / 2) * 2;
+                  const side = assignedSlot % 2 === 1 ? 'left' : 'right';
+                  item.allocation = {
+                    slotNumber: assignedSlot,
+                    side,
+                    distanceFeet,
+                    distanceMeters: Number((distanceFeet * 0.3048).toFixed(2)),
+                    zoneName,
+                    zoneCategory: zoneCat,
+                  };
                 }
                 current.unshift(item);
                 idMap.add(item.id);
@@ -178,10 +223,100 @@ function registerApiMiddlewares(server: any) {
               return;
             }
 
-            // Assign server-authoritative slot allocation
-            const maxSlot = current.reduce((max: number, r: any) => Math.max(max, r.allocation?.slotNumber || 0), 0);
-            const nextSlot = maxSlot + 1;
-            newRecord.allocation = calculateAllocation(nextSlot);
+            // Assign slot allocation if not already provided
+            // CRITICAL: Respect approved or rejected status; only pending applicants wait for verification!
+            const isVolunteerPending =
+              (newRecord.volunteerStatus === 'pending' ||
+                newRecord.allocation?.isPendingApproval ||
+                Boolean(newRecord.values?.isVolunteer)) &&
+              newRecord.volunteerStatus !== 'approved' &&
+              newRecord.volunteerStatus !== 'rejected';
+
+            if (isVolunteerPending) {
+              newRecord.volunteerStatus = 'pending';
+              newRecord.allocation = {
+                slotNumber: 0,
+                side: 'left',
+                distanceFeet: 0,
+                distanceMeters: 0,
+                zoneName: 'जोन २: स्वयंसेवक/स्वयंसेविकाएं',
+                zoneCategory: 'समर्पित स्वयंसेवक एवं व्यवस्थापक दल',
+                isPendingApproval: true,
+              };
+            } else if (newRecord.volunteerStatus === 'approved' && (!newRecord.allocation || !newRecord.allocation.slotNumber)) {
+              // Approved volunteer: Allocate next free slot in Zone 2 (50-100m, slots 101-200)
+              const occupied = new Set(
+                current
+                  .filter((r: any) => r.allocation?.slotNumber && !r.allocation?.isPendingApproval)
+                  .map((r: any) => r.allocation.slotNumber)
+              );
+              let assignedSlot = 101;
+              for (let s = 101; s <= 200; s++) {
+                if (!occupied.has(s)) {
+                  assignedSlot = s;
+                  break;
+                }
+              }
+              const distanceFeet = Math.ceil(assignedSlot / 2) * 2;
+              const side = assignedSlot % 2 === 1 ? 'left' : 'right';
+              newRecord.allocation = {
+                slotNumber: assignedSlot,
+                side,
+                distanceFeet,
+                distanceMeters: Number((distanceFeet * 0.3048).toFixed(2)),
+                zoneName: 'जोन २: स्वयंसेवक/स्वयंसेविकाएं',
+                zoneCategory: 'समर्पित स्वयंसेवक एवं व्यवस्थापक दल',
+                isPendingApproval: false,
+              };
+            } else if (!newRecord.allocation || !newRecord.allocation.slotNumber) {
+              const age = parseInt(newRecord.values?.age || '30', 10);
+              const gender = newRecord.values?.gender || '';
+              let zoneStart = 1;
+              let zoneEnd = 100;
+              let zoneName = 'जोन १: महिलाएं/कन्याएं';
+              let zoneCat = 'महिलाएं एवं कन्याएं (Females/Girls)';
+
+              if (gender === 'female') {
+                zoneStart = 1;
+                zoneEnd = 100;
+                zoneName = 'जोन १: महिलाएं/कन्याएं';
+                zoneCat = 'महिलाएं एवं कन्याएं (Females/Girls)';
+              } else if (gender === 'male' && !isNaN(age) && age > 35) {
+                zoneStart = 201;
+                zoneEnd = 316;
+                zoneName = 'जोन ३: 35+ वर्ष के पुरुष';
+                zoneCat = '35 वर्ष से अधिक उम्र के पुरुष (Men > 35 yrs)';
+              } else {
+                zoneStart = 317;
+                zoneEnd = 417;
+                zoneName = 'जोन ४: युवा लड़के/पुरुष (<=35)';
+                zoneCat = '35 वर्ष से कम के लड़के/युवा पुरुष (Men <= 35 yrs)';
+              }
+
+              const occupied = new Set(
+                current
+                  .filter((r: any) => r.allocation?.slotNumber && !r.allocation?.isPendingApproval)
+                  .map((r: any) => r.allocation.slotNumber)
+              );
+              let assignedSlot = zoneStart;
+              for (let s = zoneStart; s <= zoneEnd; s++) {
+                if (!occupied.has(s)) {
+                  assignedSlot = s;
+                  break;
+                }
+              }
+
+              const distanceFeet = Math.ceil(assignedSlot / 2) * 2;
+              const side = assignedSlot % 2 === 1 ? 'left' : 'right';
+              newRecord.allocation = {
+                slotNumber: assignedSlot,
+                side,
+                distanceFeet,
+                distanceMeters: Number((distanceFeet * 0.3048).toFixed(2)),
+                zoneName,
+                zoneCategory: zoneCat,
+              };
+            }
             newRecord.createdAt = newRecord.createdAt || new Date().toISOString();
             newRecord.status = newRecord.status || 'new';
 
@@ -205,7 +340,12 @@ function registerApiMiddlewares(server: any) {
               return;
             }
 
-            current[idx] = { ...current[idx], ...body };
+            current[idx] = {
+              ...current[idx],
+              ...body,
+              values: body.values ? { ...current[idx].values, ...body.values } : current[idx].values,
+              allocation: body.allocation ? { ...current[idx].allocation, ...body.allocation } : current[idx].allocation,
+            };
             writeRegistrations(current);
             res.end(JSON.stringify({ ok: true, record: current[idx] }));
             return;

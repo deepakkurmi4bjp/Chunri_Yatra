@@ -1,9 +1,15 @@
 // Client API service for Centralized Multi-device Registration Database
+export type VolunteerStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
 export type Allocation = {
   slotNumber: number;
   side: 'left' | 'right';
   distanceFeet: number;
   distanceMeters: number;
+  zoneId?: string;
+  zoneName?: string;
+  zoneCategory?: string;
+  isPendingApproval?: boolean;
 };
 
 export type Companion = {
@@ -20,6 +26,7 @@ export type FormValues = {
   motherName: string;
   age: string;
   gender: '' | 'male' | 'female';
+  isVolunteer?: boolean;
   mobile: string;
   whatsapp: string;
   village: string;
@@ -32,6 +39,7 @@ export type RegistrationRecord = {
   id: string;
   createdAt: string;
   status: 'new' | 'checked';
+  volunteerStatus?: VolunteerStatus;
   values: FormValues;
   companions: Companion[];
   allocation: Allocation;

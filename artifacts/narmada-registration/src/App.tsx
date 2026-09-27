@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Compass,
   Download,
   Eye,
   EyeOff,
@@ -16,12 +17,14 @@ import {
   Key,
   LockKeyhole,
   MapPin,
+  Maximize2,
   MessageCircle,
   Pencil,
   PersonStanding,
   Phone,
   Plus,
   Printer,
+  QrCode,
   RefreshCw,
   Ruler,
   Search,
@@ -38,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 import { holyAudio } from './lib/sound';
+import QRCode from 'qrcode';
 import {
   fetchServerRegistrations,
   createServerRegistration,
@@ -52,6 +56,18 @@ import {
   NarmadaAiChatModal,
   PersonalizedDivineSankalpBox,
 } from './components/AiAssistant';
+import { QrPassModal } from './components/QrPassModal';
+import { ChunriSeatBookingMap } from './components/ChunriSeatBookingMap';
+import {
+  CHUNRI_ZONES,
+  determineZoneForDevotee,
+  getAllocationForSlot,
+  findNextAvailableSlotInZone,
+  getZoneBySlotNumber,
+  getNaturalZoneByDemographics,
+  createPendingVolunteerAllocation,
+  type ChunriZone,
+} from './lib/chunriZones';
 import type { ExtractedFormValues } from './lib/gemini';
 import './index.css';
 
@@ -112,6 +128,7 @@ const initialForm: FormValues = {
   motherName: '',
   age: '',
   gender: '',
+  isVolunteer: false,
   mobile: '',
   whatsapp: '',
   village: '',
@@ -138,14 +155,7 @@ function getStoredRecords(): RegistrationRecord[] {
 }
 
 function getAllocation(slotNumber: number): Allocation {
-  const distanceFeet = Math.ceil(slotNumber / 2) * 2;
-  const side = slotNumber % 2 === 1 ? 'left' : 'right';
-  return {
-    slotNumber,
-    side,
-    distanceFeet,
-    distanceMeters: Number((distanceFeet * 0.3048).toFixed(2)),
-  };
+  return getAllocationForSlot(slotNumber);
 }
 
 function makeId() {
@@ -345,6 +355,10 @@ function AdminPanel({
   records,
   isSyncing,
   onRefresh,
+  onOpenQrPass,
+  onOpenSeatMap,
+  onApproveVolunteer,
+  onRejectVolunteer,
   onBack,
   onEdit,
   onDelete,
@@ -354,6 +368,10 @@ function AdminPanel({
   records: RegistrationRecord[];
   isSyncing?: boolean;
   onRefresh?: () => void;
+  onOpenQrPass: (record?: RegistrationRecord) => void;
+  onOpenSeatMap?: () => void;
+  onApproveVolunteer: (id: string) => void;
+  onRejectVolunteer: (id: string) => void;
   onBack: () => void;
   onEdit: (record: RegistrationRecord) => void;
   onDelete: (id: string) => void;
@@ -361,10 +379,29 @@ function AdminPanel({
   onLogout: () => void;
 }) {
   const [query, setQuery] = useState('');
+  const [volunteerFilter, setVolunteerFilter] = useState<'all' | 'pending' | 'approved' | 'normal'>('all');
   const [isReportOpen, setIsReportOpen] = useState(false);
 
+  const pendingVolunteersCount = records.filter(
+    (r) => r.allocation?.isPendingApproval || r.volunteerStatus === 'pending'
+  ).length;
+
+  const approvedVolunteersCount = records.filter(
+    (r) => r.volunteerStatus === 'approved'
+  ).length;
+
   const filteredRecords = records.filter((record) => {
-    const searchText = `${record.values.name} ${record.values.mobile} ${record.values.district} ${record.values.village}`.toLowerCase();
+    // 1. Filter by volunteer filter tab
+    if (volunteerFilter === 'pending') {
+      if (!record.allocation?.isPendingApproval && record.volunteerStatus !== 'pending') return false;
+    } else if (volunteerFilter === 'approved') {
+      if (record.volunteerStatus !== 'approved') return false;
+    } else if (volunteerFilter === 'normal') {
+      if (record.values.isVolunteer || record.volunteerStatus === 'approved' || record.volunteerStatus === 'pending') return false;
+    }
+
+    // 2. Filter by search query
+    const searchText = `${record.values.name} ${record.values.mobile} ${record.values.district} ${record.values.village} ${record.allocation?.zoneName || ''}`.toLowerCase();
     return searchText.includes(query.toLowerCase());
   });
   const checkedCount = records.filter((record) => record.status === 'checked').length;
@@ -373,6 +410,8 @@ function AdminPanel({
     holyAudio.playRipple();
     const headers = [
       'Slot No',
+      'Zone',
+      'Volunteer Status',
       'Side',
       'Distance (Feet)',
       'Name',
@@ -392,9 +431,17 @@ function AdminPanel({
     ];
 
     const rows = records.map((r) => [
-      r.allocation.slotNumber,
-      r.allocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर',
-      `${r.allocation.distanceFeet} ft`,
+      r.allocation?.isPendingApproval ? 'सत्यापन प्रतीक्षारत (Pending Approval)' : r.allocation?.slotNumber,
+      `"${r.allocation?.zoneName || ''}"`,
+      r.volunteerStatus === 'approved'
+        ? 'स्वीकृत स्वयंसेवक (Approved)'
+        : r.volunteerStatus === 'rejected'
+        ? 'अस्वीकृत (Shifted)'
+        : r.volunteerStatus === 'pending' || r.allocation?.isPendingApproval
+        ? 'समीक्षाधीन (Pending)'
+        : 'सामान्य श्रद्धालु',
+      r.allocation?.isPendingApproval ? 'प्रतीक्षारत' : (r.allocation?.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'),
+      r.allocation?.isPendingApproval ? 'प्रतीक्षारत' : `${r.allocation?.distanceFeet} ft`,
       `"${r.values.name}"`,
       `"${r.values.fatherName}"`,
       `"${r.values.motherName}"`,
@@ -478,6 +525,28 @@ function AdminPanel({
                   </button>
                 )}
                 <button
+                  className="qr-pass-btn"
+                  type="button"
+                  onClick={() => {
+                    holyAudio.playRipple();
+                    onOpenQrPass();
+                  }}
+                  title="सभी भक्तों के डिजिटल QR पास जनरेट करें"
+                >
+                  <QrCode size={14} /> 🎫 QR पास जनरेटर
+                </button>
+                <button
+                  className="qr-pass-btn"
+                  type="button"
+                  onClick={() => {
+                    holyAudio.playRipple();
+                    if (onOpenSeatMap) onOpenSeatMap();
+                  }}
+                  title="255M चुनरी सीट बुकिंग मैप देखें"
+                >
+                  <Compass size={14} /> 💺 लाइव सीट मैप
+                </button>
+                <button
                   className="ai-report-btn"
                   type="button"
                   onClick={() => {
@@ -510,10 +579,46 @@ function AdminPanel({
                 <span className="stat-label">लंबित समीक्षा</span>
                 <strong className="stat-value">{records.length - checkedCount}</strong>
               </div>
+              <div className="admin-stat volunteer-stat">
+                <span className="stat-label">🛡️ स्वयंसेवक आवेदन</span>
+                <strong className="stat-value">{pendingVolunteersCount}</strong>
+              </div>
               <div className="admin-stat chunri-stat">
                 <span className="stat-label">255m उपलब्ध स्लॉट</span>
                 <strong className="stat-value">{Math.max(0, CHUNRI_CAPACITY - records.length)}</strong>
               </div>
+            </div>
+
+            {/* Volunteer & Devotee Category Filter Tabs */}
+            <div className="admin-filter-tabs">
+              <button
+                type="button"
+                className={`admin-filter-pill ${volunteerFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setVolunteerFilter('all')}
+              >
+                सभी यात्री ({records.length})
+              </button>
+              <button
+                type="button"
+                className={`admin-filter-pill pending-pill ${volunteerFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setVolunteerFilter('pending')}
+              >
+                ⏳ स्वयंसेवक समीक्षा ({pendingVolunteersCount})
+              </button>
+              <button
+                type="button"
+                className={`admin-filter-pill approved-pill ${volunteerFilter === 'approved' ? 'active' : ''}`}
+                onClick={() => setVolunteerFilter('approved')}
+              >
+                ✅ स्वीकृत स्वयंसेवक ({approvedVolunteersCount})
+              </button>
+              <button
+                type="button"
+                className={`admin-filter-pill normal-pill ${volunteerFilter === 'normal' ? 'active' : ''}`}
+                onClick={() => setVolunteerFilter('normal')}
+              >
+                🚩 सामान्य श्रद्धालु
+              </button>
             </div>
 
             <label className="admin-search">
@@ -568,9 +673,77 @@ function AdminPanel({
                       </small>
                       <div className="record-allocation-badge">
                         <Ruler size={12} />
-                        <strong>स्लॉट #{record.allocation.slotNumber}</strong> —{' '}
-                        {record.allocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'} से {record.allocation.distanceFeet} ft ({record.allocation.distanceMeters}m)
+                        {record.allocation.isPendingApproval ? (
+                          <strong className="pending-slot-text">⏳ स्लॉट: व्यवस्थापक सत्यापन प्रतीक्षारत (Zone 2)</strong>
+                        ) : (
+                          <>
+                            <strong>स्लॉट #{record.allocation.slotNumber}</strong> —{' '}
+                            {record.allocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'} से {record.allocation.distanceFeet} ft ({record.allocation.distanceMeters}m)
+                            {record.allocation.zoneName && (
+                              <span className="record-zone-tag"> • {record.allocation.zoneName}</span>
+                            )}
+                          </>
+                        )}
                       </div>
+
+                      {/* Volunteer Review Alert for Admin */}
+                      {(record.allocation.isPendingApproval || record.volunteerStatus === 'pending') && (
+                        <div className="volunteer-pending-admin-alert">
+                          <div className="alert-content">
+                            <span className="pending-shield-icon">🛡️</span>
+                            <div>
+                              <strong>स्वयंसेवक आवेदन (सत्यापन आवश्यक)</strong>
+                              <p>स्वीकृत करने पर जोन २ (50-100m) में स्लॉट आवंटित होगा। अस्वीकृत करने पर आयु/लिंग अनुसार अन्य ज़ोन में स्वतः शिफ्ट होगा।</p>
+                            </div>
+                          </div>
+                          <div className="volunteer-decision-btns">
+                            <button
+                              type="button"
+                              className="volunteer-approve-btn"
+                              onClick={() => onApproveVolunteer(record.id)}
+                              title="स्वयंसेवक के रूप में स्वीकृत करें (ज़ोन २ स्लॉट आवंटित करें)"
+                            >
+                              <Check size={14} /> स्वीकृत करें (Zone 2)
+                            </button>
+                            <button
+                              type="button"
+                              className="volunteer-reject-btn"
+                              onClick={() => onRejectVolunteer(record.id)}
+                              title="अस्वीकृत कर आयु/लिंग अनुसार अन्य जोन में स्वतः शिफ्ट करें"
+                            >
+                              <X size={14} /> अस्वीकृत करें (Shift Zone)
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {record.volunteerStatus === 'approved' && (
+                        <div className="volunteer-approved-badge">
+                          <CheckCircle2 size={13} /> स्वीकृत स्वयंसेवक (जोन २: 50-100 मीटर)
+                          <button
+                            type="button"
+                            className="volunteer-revert-btn"
+                            onClick={() => onRejectVolunteer(record.id)}
+                            title="अस्वीकृत कर आयु/लिंग अनुसार सामान्य ज़ोन में अंतरित करें"
+                          >
+                            ज़ोन अंतरित करें
+                          </button>
+                        </div>
+                      )}
+
+                      {record.volunteerStatus === 'rejected' && (
+                        <div className="volunteer-rejected-badge">
+                          <Info size={13} /> स्वयंसेवक अस्वीकृत • आयु/लिंग अनुसार {record.allocation.zoneName || 'अन्य जोन'} में अंतरित
+                          <button
+                            type="button"
+                            className="volunteer-reapprove-btn"
+                            onClick={() => onApproveVolunteer(record.id)}
+                            title="पुनः ज़ोन २ में स्वीकृत करें"
+                          >
+                            पुनः ज़ोन २ में स्वीकृत करें
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="record-date">
                       {new Date(record.createdAt).toLocaleDateString('hi-IN', {
@@ -580,6 +753,17 @@ function AdminPanel({
                       })}
                     </div>
                     <div className="record-actions">
+                      <button
+                        className="record-action qr-action"
+                        type="button"
+                        onClick={() => {
+                          holyAudio.playRipple();
+                          onOpenQrPass(record);
+                        }}
+                        title="डिजिटल QR पास जनरेट / डाउनलोड करें"
+                      >
+                        <QrCode size={15} />
+                      </button>
                       <button
                         className={`record-action check-action ${record.status === 'checked' ? 'active' : ''}`}
                         type="button"
@@ -638,24 +822,46 @@ function ChunriAllocationCard({
   isUpdate,
   onNewRegistration,
   onAdmin,
+  onOpenQrPass,
 }: {
   allocation: Allocation;
   record?: FormValues;
   isUpdate: boolean;
   onNewRegistration: () => void;
   onAdmin: () => void;
+  onOpenQrPass: () => void;
 }) {
   const devoteeName = record?.name || 'माँ नर्मदा के भक्त';
   const [customSankalp, setCustomSankalp] = useState('');
+  const [cardQrUrl, setCardQrUrl] = useState('');
+
+  useEffect(() => {
+    if (record) {
+      QRCode.toDataURL(
+        JSON.stringify({
+          event: 'Maa Narmada Chunri Yatra 2026',
+          name: record.name,
+          mobile: record.mobile,
+          slot: allocation.slotNumber,
+          side: allocation.side,
+          dist: `${allocation.distanceFeet}ft`,
+          verified: true,
+        }),
+        { width: 160, margin: 1, color: { dark: '#1e3a1e', light: '#ffffff' } }
+      ).then(setCardQrUrl).catch(() => {});
+    }
+  }, [record, allocation]);
 
   const shareOnWhatsApp = () => {
     holyAudio.playRipple();
     const blessingSnippet = customSankalp ? `\n\n📜 *पावन संकल्प:*\n${customSankalp}\n` : '';
+    const slotInfo = allocation.isPendingApproval
+      ? `🛡️ *स्वयंसेवक आवेदन:* व्यवस्थापक सत्यापन प्रतीक्षारत (स्वीकृति उपरांत ज़ोन २: 50-100m में स्लॉट मिलेगा)`
+      : `🚩 *चुनरी स्थान:* स्लॉट #${allocation.slotNumber}\n📏 *दूरी:* ${allocation.side === 'left' ? 'बाएँ छोर' : 'दाएँ छोर'} से ${allocation.distanceFeet} फीट (${allocation.distanceMeters} मीटर)`;
     const text = encodeURIComponent(
       `🚩 *।। नर्मदे हर ।।* 🚩\n\nमैंने *श्री माँ नर्मदा जन्मोत्सव चुनरी यात्रा 2026* में 255 मीटर की विशाल चुनरी धारण करने हेतु अपना पंजीयन करा लिया है!\n\n` +
       `👤 *यात्री:* ${devoteeName}\n` +
-      `🚩 *चुनरी स्थान:* स्लॉट #${allocation.slotNumber}\n` +
-      `📏 *दूरी:* ${allocation.side === 'left' ? 'बाएँ छोर' : 'दाएँ छोर'} से ${allocation.distanceFeet} फीट (${allocation.distanceMeters} मीटर)\n` +
+      `${slotInfo}\n` +
       `✨ *लंबाई:* 255 मीटर विशाल चुनरी${blessingSnippet}\n` +
       `माँ नर्मदा का पावन आशीर्वाद आप सभी पर सदैव बना रहे! 🙏`
     );
@@ -706,15 +912,17 @@ function ChunriAllocationCard({
           <span>आरंभ (बायाँ)</span>
         </div>
         <div className="ribbon-track">
-          <span
-            className={`allocation-marker ${allocation.side}`}
-            style={{
-              left: allocation.side === 'left' ? `${Math.min(92, Math.max(8, (allocation.distanceFeet / (CHUNRI_LENGTH_FEET / 2)) * 100))}%` : undefined,
-              right: allocation.side === 'right' ? `${Math.min(92, Math.max(8, (allocation.distanceFeet / (CHUNRI_LENGTH_FEET / 2)) * 100))}%` : undefined,
-            }}
-          >
-            <span className="marker-pin">📍</span>
-          </span>
+          {!allocation.isPendingApproval && (
+            <span
+              className={`allocation-marker ${allocation.side}`}
+              style={{
+                left: allocation.side === 'left' ? `${Math.min(92, Math.max(8, (allocation.distanceFeet / (CHUNRI_LENGTH_FEET / 2)) * 100))}%` : undefined,
+                right: allocation.side === 'right' ? `${Math.min(92, Math.max(8, (allocation.distanceFeet / (CHUNRI_LENGTH_FEET / 2)) * 100))}%` : undefined,
+              }}
+            >
+              <span className="marker-pin">📍</span>
+            </span>
+          )}
           <span className="ribbon-label">✦ 255 METERS HOLY CHUNRI ✦</span>
         </div>
         <div className="ribbon-end right-end">
@@ -741,19 +949,59 @@ function ChunriAllocationCard({
 
         <div className="pass-slot-highlight">
           <span className="allocation-caption">माँ नर्मदा चुनरी सेवा स्थान</span>
-          <strong className="slot-number-big">स्लॉट #{allocation.slotNumber}</strong>
+          {allocation.isPendingApproval ? (
+            <div className="pending-volunteer-pass-banner">
+              <strong className="slot-number-big pending-title">⏳ स्वयंसेवक सत्यापन प्रतीक्षारत</strong>
+              <span className="pass-zone-tag">जोन २: समर्पित स्वयंसेवक/व्यवस्थापक दल (50 - 100 मीटर)</span>
+            </div>
+          ) : (
+            <>
+              <strong className="slot-number-big">स्लॉट #{allocation.slotNumber}</strong>
+              <span className="pass-zone-tag">
+                {allocation.zoneName || (allocation.slotNumber ? getZoneBySlotNumber(allocation.slotNumber).name : 'जोन २: स्वयंसेवक/स्वयंसेविकाएं')}
+              </span>
+            </>
+          )}
         </div>
+
+        {allocation.isPendingApproval && (
+          <div className="volunteer-pass-notice-box">
+            <div className="notice-icon-large">🛡️</div>
+            <div>
+              <strong>व्यवस्थापक द्वारा स्वीकृति उपरांत स्लॉट आवंटित होगा</strong>
+              <p>
+                आपका स्वयंसेवक आवेदन व्यवस्थापक समीक्षा हेतु दर्ज कर लिया गया है। व्यवस्थापक द्वारा स्वीकृति मिलते ही ज़ोन २ में आपका स्लॉट नंबर आवंटित कर दिया जाएगा। यदि किसी कारणवश स्वयंसेवक आवेदन निरस्त होता है, तो आपकी आयु व लिंग अनुसार सामान्य ज़ोन (1, 3 या 4) में स्वतः स्लॉट आवंटित हो जाएगा।
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="ticket-divider" />
 
         <div className="pass-details-grid">
           <div className="pass-col">
-            <span className="pass-col-label">दिशा / सिरा</span>
-            <strong className="pass-col-val">{allocation.side === 'left' ? 'बायाँ छोर (Left End)' : 'दायाँ छोर (Right End)'}</strong>
+            <span className="pass-col-label">आवंटित जोन व वर्ग</span>
+            <strong className="pass-col-val highlight-gold">
+              {allocation.zoneCategory || (allocation.slotNumber ? getZoneBySlotNumber(allocation.slotNumber).targetCategory : 'समर्पित स्वयंसेवक एवं व्यवस्थापक दल')}
+            </strong>
+          </div>
+          <div className="pass-col">
+            <span className="pass-col-label">दिशा / छोर</span>
+            <strong className="pass-col-val">
+              {allocation.isPendingApproval
+                ? 'सत्यापन उपरांत निर्धारित होगा'
+                : allocation.side === 'left'
+                ? 'बायाँ छोर (Left End)'
+                : 'दायाँ छोर (Right End)'}
+            </strong>
           </div>
           <div className="pass-col">
             <span className="pass-col-label">दूरी (Distance)</span>
-            <strong className="pass-col-val highlight-gold">{allocation.distanceFeet} फीट ({allocation.distanceMeters} मीटर)</strong>
+            <strong className="pass-col-val">
+              {allocation.isPendingApproval
+                ? 'स्वीकृति उपरांत निर्धारित होगी'
+                : `${allocation.distanceFeet} फीट (${allocation.distanceMeters} मीटर)`}
+            </strong>
           </div>
         </div>
 
@@ -773,6 +1021,29 @@ function ChunriAllocationCard({
           />
         )}
 
+        {/* Pass QR Code Live Badge */}
+        <div className="pass-qr-strip">
+          {cardQrUrl && (
+            <div className="card-qr-box" onClick={onOpenQrPass} title="क्लिक कर डिजिटल QR पास डाउनलोड करें">
+              <img src={cardQrUrl} alt="QR Code" className="card-qr-img" />
+              <span className="card-qr-label">
+                <ShieldCheck size={11} /> डिजिटल सत्यापन QR
+              </span>
+            </div>
+          )}
+          <div className="card-qr-cta">
+            <button
+              type="button"
+              className="card-qr-btn"
+              onClick={onOpenQrPass}
+            >
+              <QrCode size={15} />
+              <span>🎫 डिजिटल QR पास (PNG) डाउनलोड करें</span>
+            </button>
+            <small>प्रवेश द्वार पर त्वरित स्कैनिंग व सत्यापन हेतु मान्य</small>
+          </div>
+        </div>
+
         <div className="pass-sacred-footer">
           <span className="blessing-text">।। त्वदीय पाद पंकजं नमामि देवि नर्मदे ।।</span>
         </div>
@@ -784,6 +1055,9 @@ function ChunriAllocationCard({
 
       {/* Cinematic Actions */}
       <div className="thank-actions">
+        <button className="qr-pass-action-btn" type="button" onClick={onOpenQrPass}>
+          <QrCode size={16} /> 🎫 डिजिटल QR पास जनरेटर
+        </button>
         <button className="whatsapp-share-btn" type="button" onClick={shareOnWhatsApp}>
           <Share2 size={16} /> WhatsApp पर शेयर करें
         </button>
@@ -813,6 +1087,19 @@ function App() {
   const [isAutoFillOpen, setIsAutoFillOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // QR Pass Modal
+  const [isQrPassOpen, setIsQrPassOpen] = useState(false);
+  const [qrPassRecord, setQrPassRecord] = useState<RegistrationRecord | null>(null);
+
+  // Modern Flight-Style Chunri Seat Map Selection
+  const [customSelectedSlot, setCustomSelectedSlot] = useState<number | null>(null);
+  const [isSeatMapModalOpen, setIsSeatMapModalOpen] = useState(false);
+
+  const openQrPass = (record?: RegistrationRecord) => {
+    setQrPassRecord(record || null);
+    setIsQrPassOpen(true);
+  };
 
   const [view, setView] = useState<View>(() => (
     new URLSearchParams(window.location.search).get('admin') === '1'
@@ -952,36 +1239,106 @@ function App() {
     try {
       if (editingId) {
         const existingRecord = records.find((record) => record.id === editingId);
-        if (existingRecord) setLastAllocation(existingRecord.allocation);
-        
+        let updatedAllocation = existingRecord?.allocation;
+        let updatedVolunteerStatus = existingRecord?.volunteerStatus || 'none';
+
+        // Check if volunteer status changed during edit
+        const isNowVolunteer = Boolean(values.isVolunteer);
+        const wasVolunteer = Boolean(
+          existingRecord?.values?.isVolunteer ||
+          existingRecord?.volunteerStatus === 'pending' ||
+          existingRecord?.volunteerStatus === 'approved'
+        );
+
+        if (isNowVolunteer && !wasVolunteer) {
+          // Devotee applied to be a volunteer: requires Admin verification, slot 0
+          updatedAllocation = createPendingVolunteerAllocation();
+          updatedVolunteerStatus = 'pending';
+        } else if (!isNowVolunteer && wasVolunteer) {
+          // Devotee opted out of volunteer: automatically shift to demographic natural zone
+          const naturalZone = getNaturalZoneByDemographics(values.gender, values.age);
+          const occupied = new Set<number>();
+          records.forEach((r) => {
+            if (r.id !== editingId && r.allocation?.slotNumber && !r.allocation.isPendingApproval) {
+              occupied.add(r.allocation.slotNumber);
+            }
+          });
+          const targetSlot = customSelectedSlot || findNextAvailableSlotInZone(naturalZone, occupied);
+          updatedAllocation = getAllocationForSlot(targetSlot);
+          updatedVolunteerStatus = 'none';
+        } else if (!isNowVolunteer && customSelectedSlot && customSelectedSlot !== existingRecord?.allocation?.slotNumber) {
+          // Custom slot changed during edit
+          updatedAllocation = getAllocationForSlot(customSelectedSlot);
+        }
+
+        if (updatedAllocation) setLastAllocation(updatedAllocation);
+
+        const updatePayload: Partial<RegistrationRecord> = {
+          values,
+          companions,
+          volunteerStatus: updatedVolunteerStatus,
+          allocation: updatedAllocation,
+        };
+
         // Save update to central server
-        await updateServerRegistration(editingId, { values, companions }).catch((err) => {
+        await updateServerRegistration(editingId, updatePayload).catch((err) => {
           console.warn('Server update error, will save locally', err);
         });
 
         setRecords((current) =>
           current.map((record) =>
             record.id === editingId
-              ? { ...record, values, companions }
+              ? { ...record, ...updatePayload }
               : record,
           ),
         );
       } else {
-        const nextSlot = records.reduce(
-          (max, record) => Math.max(max, record.allocation?.slotNumber || 0),
-          0,
-        ) + 1;
-        if (nextSlot > CHUNRI_CAPACITY) {
-          setCapacityError('255 मीटर की चुनरी के सभी स्थान भर चुके हैं।');
-          setIsSubmitting(false);
-          return;
+        const isVolunteerApplicant = Boolean(values.isVolunteer);
+
+        let candidateAllocation: Allocation;
+        let candidateVolunteerStatus: VolunteerStatus = 'none';
+
+        if (isVolunteerApplicant) {
+          // Volunteer registration: Slot is NOT assigned until Admin verifies/rejects!
+          candidateAllocation = createPendingVolunteerAllocation();
+          candidateVolunteerStatus = 'pending';
+        } else {
+          // Regular non-volunteer applicant -> auto allocate slot according to age/gender or custom seat!
+          const isCustomTaken = customSelectedSlot
+            ? records.some((r) => r.allocation?.slotNumber === customSelectedSlot && !r.allocation.isPendingApproval)
+            : false;
+
+          let targetSlot = customSelectedSlot && !isCustomTaken ? customSelectedSlot : null;
+          if (!targetSlot) {
+            const autoZone = determineZoneForDevotee({
+              gender: values.gender,
+              age: values.age,
+              isVolunteer: false,
+            });
+            const occupied = new Set<number>();
+            records.forEach((r) => {
+              if (r.allocation?.slotNumber && !r.allocation.isPendingApproval) {
+                occupied.add(r.allocation.slotNumber);
+              }
+            });
+            targetSlot = findNextAvailableSlotInZone(autoZone, occupied);
+          }
+
+          if (targetSlot > CHUNRI_CAPACITY) {
+            setCapacityError('255 मीटर की चुनरी के सभी स्थान भर चुके हैं।');
+            setIsSubmitting(false);
+            return;
+          }
+
+          candidateAllocation = getAllocationForSlot(targetSlot);
+          candidateVolunteerStatus = 'none';
         }
 
-        const candidateAllocation = getAllocation(nextSlot);
-        const newRecordPayload = {
+        const newRecordPayload: RegistrationRecord = {
           id: makeId(),
           createdAt: new Date().toISOString(),
           status: 'new' as const,
+          volunteerStatus: candidateVolunteerStatus,
           values,
           companions,
           allocation: candidateAllocation,
@@ -1040,6 +1397,7 @@ function App() {
     setEditingId(null);
     setLastAllocation(null);
     setCapacityError('');
+    setCustomSelectedSlot(null);
   };
 
   const editRecord = (record: RegistrationRecord) => {
@@ -1084,8 +1442,105 @@ function App() {
     }
   };
 
-  const nextSlotNumber = records.length + 1;
-  const nextAllocation = getAllocation(nextSlotNumber);
+  const occupiedSlotsSet = useMemo(() => {
+    const set = new Set<number>();
+    records.forEach((r) => {
+      if (r.allocation?.slotNumber && !r.allocation.isPendingApproval) {
+        set.add(r.allocation.slotNumber);
+      }
+    });
+    return set;
+  }, [records]);
+
+  // Determine Zone automatically based on Age, Gender and Volunteer choice
+  const applicantZone = useMemo(() => {
+    return determineZoneForDevotee({
+      gender: values.gender,
+      age: values.age,
+      isVolunteer: values.isVolunteer,
+    });
+  }, [values.gender, values.age, values.isVolunteer]);
+
+  // Automatic next available slot in this designated zone
+  const autoZoneSlot = useMemo(() => {
+    return findNextAvailableSlotInZone(applicantZone, occupiedSlotsSet);
+  }, [applicantZone, occupiedSlotsSet]);
+
+  const activeSelectedSlot = customSelectedSlot || autoZoneSlot;
+  const activeAllocation = getAllocationForSlot(activeSelectedSlot);
+
+  const approveVolunteer = async (id: string) => {
+    holyAudio.playTempleChime();
+    const target = records.find((r) => r.id === id);
+    if (!target) return;
+
+    // Find next available slot in Zone 2 (50-100m)
+    const occupied = new Set<number>();
+    records.forEach((r) => {
+      if (r.id !== id && r.allocation?.slotNumber && !r.allocation.isPendingApproval) {
+        occupied.add(r.allocation.slotNumber);
+      }
+    });
+
+    const zone2 = CHUNRI_ZONES[1]; // Zone 2: 50-100m
+    const newSlot = findNextAvailableSlotInZone(zone2, occupied);
+    const newAllocation = getAllocationForSlot(newSlot);
+    newAllocation.isPendingApproval = false;
+
+    const updatedRecord: RegistrationRecord = {
+      ...target,
+      volunteerStatus: 'approved',
+      allocation: newAllocation,
+    };
+
+    setRecords((current) => current.map((r) => (r.id === id ? updatedRecord : r)));
+    try {
+      await updateServerRegistration(id, {
+        volunteerStatus: 'approved',
+        allocation: newAllocation,
+      });
+    } catch (e) {
+      console.warn('Failed to update volunteer approval on server', e);
+    }
+  };
+
+  const rejectVolunteer = async (id: string) => {
+    holyAudio.playRipple();
+    const target = records.find((r) => r.id === id);
+    if (!target) return;
+
+    // Reject volunteer: Shift to natural demographic zone (Zone 1, 3, or 4) based on age & gender
+    const naturalZone = getNaturalZoneByDemographics(target.values.gender, target.values.age);
+
+    const occupied = new Set<number>();
+    records.forEach((r) => {
+      if (r.id !== id && r.allocation?.slotNumber && !r.allocation.isPendingApproval) {
+        occupied.add(r.allocation.slotNumber);
+      }
+    });
+
+    const newSlot = findNextAvailableSlotInZone(naturalZone, occupied);
+    const newAllocation = getAllocationForSlot(newSlot);
+    newAllocation.isPendingApproval = false;
+
+    const updatedRecord: RegistrationRecord = {
+      ...target,
+      volunteerStatus: 'rejected',
+      values: { ...target.values, isVolunteer: false },
+      allocation: newAllocation,
+    };
+
+    setRecords((current) => current.map((r) => (r.id === id ? updatedRecord : r)));
+    try {
+      await updateServerRegistration(id, {
+        volunteerStatus: 'rejected',
+        values: { ...target.values, isVolunteer: false },
+        allocation: newAllocation,
+      });
+    } catch (e) {
+      console.warn('Failed to update volunteer rejection on server', e);
+    }
+  };
 
   if (view === 'admin-login') {
     return (
@@ -1102,6 +1557,10 @@ function App() {
         records={records}
         isSyncing={isSyncing}
         onRefresh={() => loadServerRecords(false)}
+        onOpenQrPass={(rec) => openQrPass(rec)}
+        onOpenSeatMap={() => setIsSeatMapModalOpen(true)}
+        onApproveVolunteer={approveVolunteer}
+        onRejectVolunteer={rejectVolunteer}
         onBack={() => {
           resetForm();
           setView('form');
@@ -1154,6 +1613,16 @@ function App() {
             record={values}
             isUpdate={Boolean(editingId)}
             onNewRegistration={resetForm}
+            onOpenQrPass={() =>
+              openQrPass({
+                id: editingId || makeId(),
+                createdAt: new Date().toISOString(),
+                status: 'new',
+                values,
+                companions,
+                allocation: lastAllocation,
+              })
+            }
             onAdmin={() => {
               setSubmitted(false);
               setView('admin-login');
@@ -1183,6 +1652,28 @@ function App() {
           </div>
 
           <div className="toolbar-actions">
+            <button
+              className="seatmap-pill-btn"
+              type="button"
+              onClick={() => {
+                holyAudio.playRipple();
+                setIsSeatMapModalOpen(true);
+              }}
+              title="255M चुनरी सीट बुकिंग मैप (हवाई जहाज सीट शैली)"
+            >
+              <Compass size={14} /> <span>💺 चुनरी सीट मैप</span>
+            </button>
+            <button
+              className="qr-pass-pill-btn"
+              type="button"
+              onClick={() => {
+                holyAudio.playRipple();
+                openQrPass();
+              }}
+              title="डिजिटल QR पास जनरेटर / पास खोजें"
+            >
+              <QrCode size={14} /> <span>QR पास</span>
+            </button>
             <button
               className="ai-guide-pill-btn"
               type="button"
@@ -1277,18 +1768,75 @@ function App() {
             </div>
           </header>
 
-          {/* Real-time Dynamic Chunri Live Preview */}
+          {/* Real-time Dynamic Chunri Live Preview with Flight-Style Seat Map Trigger */}
           <div className="live-slot-preview-banner">
             <div className="preview-label">
               <Ruler size={15} />
-              <span>रीयल-टाइम स्लॉट अनुमान:</span>
-            </div>
-            <div className="preview-slot-box">
-              <span className="preview-slot-num">स्लॉट #{nextSlotNumber}</span>
-              <span className="preview-slot-side">
-                ({nextAllocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'} से {nextAllocation.distanceFeet} फीट)
+              <span>
+                {values.isVolunteer
+                  ? 'स्वयंसेवक आवेदन स्थिति:'
+                  : customSelectedSlot
+                  ? 'आपकी चुनी हुई सीट:'
+                  : 'रीयल-टाइम सीट अनुमान:'}
               </span>
             </div>
+            <div className="preview-slot-box">
+              {values.isVolunteer ? (
+                <span className="preview-slot-num pending">⏳ व्यवस्थापक स्वीकृति उपरांत स्लॉट मिलेगा</span>
+              ) : (
+                <>
+                  <span className="preview-slot-num">स्लॉट #{activeSelectedSlot}</span>
+                  <span className="preview-slot-side">
+                    ({activeAllocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'} से {activeAllocation.distanceFeet} फीट)
+                  </span>
+                </>
+              )}
+            </div>
+            <button
+              type="button"
+              className="preview-seatmap-trigger-btn"
+              onClick={() => {
+                holyAudio.playRipple();
+                setIsSeatMapModalOpen(true);
+              }}
+              title="हवाई जहाज सीट बुकिंग की तरह अपना स्थान चुनें"
+            >
+              <span>✈️ सीट मैप खोलें</span>
+            </button>
+          </div>
+
+          {/* ✈️ 255M Chunri Modern Flight-Style Interactive Seat Booking System */}
+          <div className="seat-selection-form-section">
+            <div className="seat-section-header">
+              <div className="seat-header-text">
+                <span className="seat-badge-flight">✈️ लाइव सीट बुकिंग सिस्टम</span>
+                <h4>255M चुनरी के दोनों छोर पर अपनी सीट चुनें</h4>
+                <p>
+                  लाल (🔴) स्थान भरे हुए हैं, पीला (🟡) स्थान खाली हैं। किसी भी पीले स्थान पर क्लिक कर अपना स्थान आरक्षित करें:
+                </p>
+              </div>
+              <button
+                type="button"
+                className="seat-expand-modal-btn"
+                onClick={() => {
+                  holyAudio.playRipple();
+                  setIsSeatMapModalOpen(true);
+                }}
+                title="बड़ी स्क्रीन में सीट मैप देखें"
+              >
+                <Maximize2 size={14} /> बड़ा मैप देखें
+              </button>
+            </div>
+
+            <ChunriSeatBookingMap
+              records={records}
+              selectedSlotNumber={activeSelectedSlot}
+              designatedZoneId={applicantZone.id}
+              applicantLabel={`${values.name || 'यात्री'} (${applicantZone.shortName})`}
+              onSelectSlot={(slot) => {
+                setCustomSelectedSlot(slot);
+              }}
+            />
           </div>
 
           <form className="form-wrap" onSubmit={handleSubmit} noValidate>
@@ -1405,6 +1953,69 @@ function App() {
                     </label>
                   </div>
                 </Field>
+
+                {/* Volunteer Option (Zone 2: 50-100m) */}
+                <div className="volunteer-toggle-box">
+                  <label className="volunteer-checkbox-label" onClick={() => holyAudio.playRipple()}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(values.isVolunteer)}
+                      onChange={(e) => update('isVolunteer', e.target.checked)}
+                      className="volunteer-checkbox-input"
+                    />
+                    <div className="volunteer-text-wrap">
+                      <span className="volunteer-title">🛡️ क्या आप व्यवस्थापक / स्वयंसेवक (Volunteer) दल में सेवा देना चाहते हैं?</span>
+                      <small className="volunteer-hint">चयन करने पर चुनरी के मध्य सुरक्षा खंड (जोन २: 50-100 मीटर) में स्वतः स्थान आवंटित होगा।</small>
+                    </div>
+                  </label>
+                </div>
+
+                {/* 🌟 Dynamic Real-time Zone & Slot Allocation Card based on Age & Gender */}
+                <div
+                  className="zone-realtime-allocation-card"
+                  style={{
+                    background: applicantZone.bgRgba,
+                    borderColor: applicantZone.borderRgba,
+                  }}
+                >
+                  <div className="zone-card-top">
+                    <span className="zone-live-badge">
+                      <Sparkles size={13} /> आपकी आयु व लिंग अनुसार स्वतः आवंटित ज़ोन:
+                    </span>
+                    <span className="zone-meter-badge">{applicantZone.meterRange}</span>
+                  </div>
+
+                  <div className="zone-card-main">
+                    <div className="zone-badge-huge">
+                      <span className="zone-icon-huge">{applicantZone.badgeIcon}</span>
+                      <div>
+                        <h4 className="zone-name-title">{applicantZone.name}</h4>
+                        <p className="zone-target-copy">पात्रता: <b>{applicantZone.targetCategory}</b></p>
+                      </div>
+                    </div>
+
+                    <div className="zone-slot-preview-box">
+                      <span className="slot-preview-caption">स्लॉट स्थिति</span>
+                      {values.isVolunteer ? (
+                        <>
+                          <strong className="slot-preview-num pending-pill">⏳ सत्यापन प्रतीक्षारत</strong>
+                          <span className="slot-preview-side">व्यवस्थापक स्वीकृति उपरांत ज़ोन २ में स्लॉट मिलेगा</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong className="slot-preview-num">स्लॉट #{activeSelectedSlot}</strong>
+                          <span className="slot-preview-side">
+                            {activeAllocation.side === 'left' ? 'बायाँ छोर' : 'दायाँ छोर'} ({activeAllocation.distanceFeet} ft / {activeAllocation.distanceMeters}m)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="zone-rule-footnote">
+                    ℹ️ {applicantZone.description}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1686,6 +2297,38 @@ function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      <QrPassModal
+        isOpen={isQrPassOpen}
+        onClose={() => setIsQrPassOpen(false)}
+        record={qrPassRecord}
+        allRecords={records}
+        onSelectRecord={(rec) => setQrPassRecord(rec)}
+        onNewRegistration={() => {
+          setIsQrPassOpen(false);
+          resetForm();
+          setView('form');
+        }}
+      />
+
+      {/* Flight Style Chunri Seat Map Modal */}
+      {isSeatMapModalOpen && (
+        <div className="seatmap-modal-backdrop" onClick={() => setIsSeatMapModalOpen(false)}>
+          <div className="seatmap-modal-container" onClick={(e) => e.stopPropagation()}>
+            <ChunriSeatBookingMap
+              records={records}
+              selectedSlotNumber={activeSelectedSlot}
+              designatedZoneId={applicantZone.id}
+              applicantLabel={`${values.name || 'यात्री'} (${applicantZone.shortName})`}
+              onSelectSlot={(slot) => {
+                setCustomSelectedSlot(slot);
+              }}
+              isModal={true}
+              onCloseModal={() => setIsSeatMapModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
