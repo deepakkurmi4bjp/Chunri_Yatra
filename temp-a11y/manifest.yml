@@ -1,0 +1,13 @@
+name: netlify-plugin-a11y
+inputs:
+  - name: checkPaths
+    default: ['/']
+    required: false
+  - name: ignoreDirectories
+    required: false
+  - name: resultMode
+    default: error
+  - name: debugMode
+    default: false
+  - name: testMode
+    default: false

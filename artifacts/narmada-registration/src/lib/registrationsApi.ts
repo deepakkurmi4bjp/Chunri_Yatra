@@ -51,6 +51,8 @@ export async function fetchServerRegistrations(): Promise<RegistrationRecord[]> 
       headers: { 'Cache-Control': 'no-cache' },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return [];
     const data = await res.json();
     return Array.isArray(data.records) ? data.records : [];
   } catch (err) {
@@ -62,51 +64,65 @@ export async function fetchServerRegistrations(): Promise<RegistrationRecord[]> 
 export async function createServerRegistration(
   record: Omit<RegistrationRecord, 'allocation'> & { allocation?: Allocation }
 ): Promise<RegistrationRecord> {
-  const res = await fetch('/api/registrations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ record }),
-  });
+  try {
+    const res = await fetch('/api/registrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record }),
+    });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || `Server error ${res.status}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error ${res.status}`);
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return record as RegistrationRecord;
+    }
+
+    const data = await res.json();
+    return (data.record as RegistrationRecord) || (record as RegistrationRecord);
+  } catch (err) {
+    console.warn('Server registration save error, keeping local', err);
+    return record as RegistrationRecord;
   }
-
-  const data = await res.json();
-  return data.record as RegistrationRecord;
 }
 
 export async function updateServerRegistration(
   id: string,
   updates: Partial<RegistrationRecord>
-): Promise<RegistrationRecord> {
-  const res = await fetch(`/api/registrations/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  });
+): Promise<RegistrationRecord | null> {
+  try {
+    const res = await fetch(`/api/registrations/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || `Server error ${res.status}`);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
+
+    const data = await res.json();
+    return (data.record as RegistrationRecord) || null;
+  } catch (err) {
+    console.warn('Server update error, keeping local', err);
+    return null;
   }
-
-  const data = await res.json();
-  return data.record as RegistrationRecord;
 }
 
 export async function deleteServerRegistration(id: string): Promise<boolean> {
-  const res = await fetch(`/api/registrations/${id}`, {
-    method: 'DELETE',
-  });
+  try {
+    const res = await fetch(`/api/registrations/${id}`, {
+      method: 'DELETE',
+    });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || `Server error ${res.status}`);
+    return res.ok;
+  } catch (err) {
+    console.warn('Server delete error, keeping local', err);
+    return true;
   }
-
-  return true;
 }
 
 export async function syncLocalRecordsToServer(
@@ -123,11 +139,14 @@ export async function syncLocalRecordsToServer(
       body: JSON.stringify({ records: localRecords }),
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) return localRecords;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return localRecords;
+
     const data = await res.json();
-    return Array.isArray(data.records) ? data.records : [];
+    return Array.isArray(data.records) ? data.records : localRecords;
   } catch (err) {
-    console.warn('Sync failed, using server records', err);
-    return fetchServerRegistrations();
+    console.warn('Sync failed, using local records', err);
+    return localRecords;
   }
 }

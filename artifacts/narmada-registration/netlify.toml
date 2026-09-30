@@ -1,6 +1,6 @@
 [build]
-  command = "pnpm --filter @workspace/narmada-registration run build"
-  publish = "artifacts/narmada-registration/dist/public"
+  command = "pnpm run build"
+  publish = "dist/public"
 
 [build.environment]
   NODE_VERSION = "20"

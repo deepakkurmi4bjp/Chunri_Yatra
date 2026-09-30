@@ -5,12 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.VITE_PORT || '3000';
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const rawPort = process.env.VITE_PORT || process.env.PORT || '3000';
+const parsedPort = Number(rawPort);
+const port = !Number.isNaN(parsedPort) && parsedPort > 0 ? parsedPort : 3000;
 
 const basePath = process.env.BASE_PATH || '/';
 
