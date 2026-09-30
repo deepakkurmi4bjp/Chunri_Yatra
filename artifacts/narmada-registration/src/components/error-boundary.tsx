@@ -36,29 +36,43 @@ function toError(value: unknown): Error {
 }
 
 function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
+  const handleClearCacheAndReload = () => {
+    try {
+      localStorage.removeItem('narmada-registration-records');
+      sessionStorage.clear();
+    } catch (_) {}
+    window.location.reload();
+  };
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-6">
-      <div className="max-w-lg w-full text-center">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Something went wrong
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#02120e] text-[#f8f6ec] p-6">
+      <div className="max-w-lg w-full text-center bg-[#06261d] border border-[#f5c431]/40 rounded-2xl p-6 shadow-2xl">
+        <div className="text-3xl mb-2">🚩</div>
+        <h1 className="text-xl font-bold text-[#ffe270]">
+          श्री माँ नर्मदा चुनरी यात्रा पोर्टल
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          This part of the app hit an error. The rest of the app is still
-          running.
+        <p className="mt-2 text-sm text-[#b5cbbe]">
+          पेज लोड करते समय एक अप्रत्याशित समस्या हुई।
         </p>
-        {/* Dev only: messages can carry API responses and other internals. */}
-        {import.meta.env.DEV ? (
-          <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-left text-xs text-gray-800">
-            {error.message || String(error)}
-          </pre>
-        ) : null}
-        <button
-          type="button"
-          onClick={resetError}
-          className="mt-4 rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
-        >
-          Try again
-        </button>
+        <div className="mt-3 overflow-x-auto rounded-lg bg-black/40 border border-red-500/30 p-3 text-left text-xs text-red-300 font-mono">
+          {error.message || String(error)}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={resetError}
+            className="rounded-full bg-[#f5c431] px-5 py-2.5 text-sm font-semibold text-[#02120e] hover:bg-[#ffe270] transition-colors"
+          >
+            पुनः प्रयास करें (Try again)
+          </button>
+          <button
+            type="button"
+            onClick={handleClearCacheAndReload}
+            className="rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+          >
+            कैश साफ़ कर रीलोड करें
+          </button>
+        </div>
       </div>
     </div>
   );

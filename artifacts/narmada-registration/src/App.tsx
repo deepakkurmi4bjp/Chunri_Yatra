@@ -14,6 +14,7 @@ import {
   FileText,
   HeartPulse,
   Home,
+  Info,
   Key,
   LockKeyhole,
   MapPin,
@@ -74,6 +75,7 @@ import './index.css';
 type Gender = '' | 'male' | 'female';
 type View = 'form' | 'admin-login' | 'admin';
 type RecordStatus = 'new' | 'checked';
+type VolunteerStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
 type Companion = {
   id: number;
@@ -89,6 +91,7 @@ type FormValues = {
   motherName: string;
   age: string;
   gender: Gender;
+  isVolunteer?: boolean;
   mobile: string;
   whatsapp: string;
   village: string;
@@ -104,6 +107,11 @@ type Allocation = {
   side: 'left' | 'right';
   distanceFeet: number;
   distanceMeters: number;
+  zoneId?: string;
+  zoneName?: string;
+  zoneCategory?: string;
+  isPendingApproval?: boolean;
+  isVolunteerLeader?: boolean;
 };
 
 type RegistrationRecord = {
@@ -113,6 +121,7 @@ type RegistrationRecord = {
   values: FormValues;
   companions: Companion[];
   allocation: Allocation;
+  volunteerStatus?: VolunteerStatus;
 };
 
 const STORAGE_KEY = 'narmada-registration-records';
@@ -139,16 +148,42 @@ const initialForm: FormValues = {
 
 const relations = ['भाई - भाई', 'माता - पिता', 'पति - पत्नी', 'पुत्र - पुत्री', 'अन्य मित्र / परिजन'];
 
+function sanitizeRecord(record: any, index: number): RegistrationRecord {
+  const values: FormValues = {
+    name: record?.values?.name || '',
+    fatherName: record?.values?.fatherName || '',
+    motherName: record?.values?.motherName || '',
+    age: record?.values?.age ? String(record.values.age) : '',
+    gender: record?.values?.gender || '',
+    isVolunteer: Boolean(record?.values?.isVolunteer),
+    mobile: record?.values?.mobile || '',
+    whatsapp: record?.values?.whatsapp || '',
+    village: record?.values?.village || '',
+    block: record?.values?.block || '',
+    district: record?.values?.district || '',
+    allergy: record?.values?.allergy || '',
+  };
+  const companions: Companion[] = Array.isArray(record?.companions) ? record.companions : [];
+  const allocation: Allocation = record?.allocation ?? getAllocation(index + 1);
+
+  return {
+    id: record?.id || makeId(),
+    createdAt: record?.createdAt || new Date().toISOString(),
+    status: record?.status === 'checked' ? 'checked' : 'new',
+    values,
+    companions,
+    allocation,
+    volunteerStatus: record?.volunteerStatus || (values.isVolunteer ? 'pending' : 'none'),
+  };
+}
+
 function getStoredRecords(): RegistrationRecord[] {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
-    const parsed = JSON.parse(stored) as RegistrationRecord[];
+    const parsed = JSON.parse(stored);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((record, index) => ({
-      ...record,
-      allocation: record.allocation ?? getAllocation(index + 1),
-    }));
+    return parsed.map((record, index) => sanitizeRecord(record, index));
   } catch {
     return [];
   }
@@ -1119,8 +1154,9 @@ function App() {
       if (!silent) setIsSyncing(true);
       const serverRecords = await fetchServerRegistrations();
       if (serverRecords && Array.isArray(serverRecords)) {
-        setRecords(serverRecords);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serverRecords));
+        const sanitized = serverRecords.map((r, i) => sanitizeRecord(r, i));
+        setRecords(sanitized);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
       }
     } catch (e) {
       console.warn('Central server sync failed, keeping local records', e);
@@ -1136,8 +1172,9 @@ function App() {
       syncLocalRecordsToServer(local)
         .then((merged) => {
           if (Array.isArray(merged) && merged.length > 0) {
-            setRecords(merged);
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            const sanitized = merged.map((r, i) => sanitizeRecord(r, i));
+            setRecords(sanitized);
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
           }
         })
         .catch(() => {
